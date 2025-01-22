@@ -322,8 +322,8 @@ def main():
     # Append final ideas
     ideas_heading = {
         "object": "block",
-        "type": "heading_2",
-        "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Generated Ideas"}}]},
+        "type": "heading_3",
+        "heading_3": {"rich_text": [{"type": "text", "text": {"content": "Generated Ideas"}}]},
     }
     my_notion_client.append_custom_blocks_to_page( [ideas_heading])
 
@@ -344,8 +344,8 @@ def main():
     # Append affinity diagram
     affinity_heading = {
         "object": "block",
-        "type": "heading_2",
-        "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Affinity Diagram (Themes)"}}]},
+        "type": "heading_3",
+        "heading_3": {"rich_text": [{"type": "text", "text": {"content": "Affinity Diagram (Themes)"}}]},
     }
     my_notion_client.append_custom_blocks_to_page([affinity_heading])
 
