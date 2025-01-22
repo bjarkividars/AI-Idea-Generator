@@ -5,13 +5,16 @@ from my_notion_client import NotionClientWrapper
 from my_openai import OpenAIClient
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 class IdeaItem:
     """
     A Python class to store a brainstorming idea with title, description, 
     and an optional rating (e.g., "Good enough" or "Needs improvement").
     """
+
     def __init__(self, title: str, description: str, rating: Optional[str] = None):
         self.title = title
         self.description = description
@@ -20,10 +23,11 @@ class IdeaItem:
     def __repr__(self):
         return f"IdeaItem(title={self.title!r}, description={self.description!r}, rating={self.rating!r})"
 
+
 def parse_ideas(json_ideas: list) -> List[IdeaItem]:
     """
     Convert a JSON list of idea dicts into a list of IdeaItem objects.
-    
+
     Expected JSON format of each idea:
       {
         "title": "some title",
@@ -43,6 +47,7 @@ def parse_ideas(json_ideas: list) -> List[IdeaItem]:
         idea_items.append(IdeaItem(title, description))
     return idea_items
 
+
 def ideas_to_json(ideas: List[IdeaItem]) -> list:
     """
     Convert a list of IdeaItem objects to a JSON-serializable list of dicts.
@@ -54,6 +59,7 @@ def ideas_to_json(ideas: List[IdeaItem]) -> list:
         list: A list of dictionaries (title, description).
     """
     return [{"title": idea.title, "description": idea.description} for idea in ideas]
+
 
 def evaluate_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> List[bool]:
     """
@@ -87,12 +93,14 @@ def evaluate_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> List[b
     """
 
     logging.info("Evaluating the quality of ideas...")
-    evaluation_response = openai_client.query(system_message, evaluation_prompt)
+    evaluation_response = openai_client.query(
+        system_message, evaluation_prompt)
     # Parse the response
     try:
         ratings_data = json.loads(clean_json_response(evaluation_response))
     except json.JSONDecodeError:
-        logging.error("Failed to parse evaluation response. Marking all as Needs improvement.")
+        logging.error(
+            "Failed to parse evaluation response. Marking all as Needs improvement.")
         # Mark all as "Needs improvement"
         for idea in ideas:
             idea.rating = "Needs improvement"
@@ -117,6 +125,7 @@ def evaluate_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> List[b
 
     return bool_results
 
+
 def clean_json_response(response: str) -> str:
     """
     Removes enclosing triple backticks and language hints (e.g., ```json) from a model response.
@@ -132,6 +141,7 @@ def clean_json_response(response: str) -> str:
     elif response.startswith("```") and response.endswith("```"):
         return response[3:-3].strip()  # Remove ```
     return response
+
 
 def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
     """
@@ -177,9 +187,11 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
         # 1) Generate initial ideas if no ideas exist
         if not good_enough_ideas and not needs_improvement_ideas:
             logging.info("Generating 24 initial ideas...")
-            raw_generation_response = openai_client.query(system_message, generation_prompt)
+            raw_generation_response = openai_client.query(
+                system_message, generation_prompt)
             try:
-                json_list = json.loads(clean_json_response(raw_generation_response))
+                json_list = json.loads(
+                    clean_json_response(raw_generation_response))
                 all_ideas = parse_ideas(json_list)
                 needs_improvement_ideas.extend(all_ideas)
             except json.JSONDecodeError:
@@ -189,7 +201,8 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
         # 2) Evaluate the ideas in the `needs_improvement_ideas` list
         if needs_improvement_ideas:
             logging.info(f"Evaluating {len(needs_improvement_ideas)} ideas...")
-            evaluation_results = evaluate_ideas(openai_client, needs_improvement_ideas)
+            evaluation_results = evaluate_ideas(
+                openai_client, needs_improvement_ideas)
 
             # Separate ideas into good enough and needs improvement
             for idx, is_good in enumerate(evaluation_results):
@@ -200,7 +213,8 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
                     idea.rating = "Needs improvement"
 
             # Update the `needs_improvement_ideas` list to only include weak ideas
-            needs_improvement_ideas = [idea for idea in needs_improvement_ideas if idea.rating == "Needs improvement"]
+            needs_improvement_ideas = [
+                idea for idea in needs_improvement_ideas if idea.rating == "Needs improvement"]
 
         # 3) Improve the weak ideas if any remain
         if needs_improvement_ideas:
@@ -209,10 +223,10 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
             good_ideas_json = ideas_to_json(good_enough_ideas)
 
             improvement_prompt = f"""
-            You are given a list of ideas that need improvement to be more creative, practical, 
-            and relevant. Each idea has "title" and "description". 
+            You are given a list of ideas that need improvement to be more creative, practical,
+            and relevant. Each idea has "title" and "description".
 
-            You are also provided examples of ideas rated "Good enough". Use these examples 
+            You are also provided examples of ideas rated "Good enough". Use these examples
             as inspiration when improving the weaker ideas.
 
             Good enough ideas:
@@ -224,9 +238,11 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
             Return the improved ideas in the same JSON structure.
             """
 
-            improve_response = openai_client.query(system_message, improvement_prompt)
+            improve_response = openai_client.query(
+                system_message, improvement_prompt)
             try:
-                improved_list = json.loads(clean_json_response(improve_response))
+                improved_list = json.loads(
+                    clean_json_response(improve_response))
                 improved_ideas = parse_ideas(improved_list)
 
                 # Replace the weak ideas with the improved ones
@@ -240,8 +256,10 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
             logging.info("All ideas are Good enough!")
             return good_enough_ideas
 
-    logging.warning("Reached maximum attempts. Some ideas may still need improvement.")
+    logging.warning(
+        "Reached maximum attempts. Some ideas may still need improvement.")
     return good_enough_ideas + needs_improvement_ideas
+
 
 def categorize_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> dict:
     """
@@ -261,7 +279,7 @@ def categorize_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> dict
     You are given a list of ideas, each with a "title" and "description".
     Your task is to sort them into 3–5 relevant themes or categories.
 
-    Return the result as a JSON object where the keys are the theme names, 
+    Return the result as a JSON object where the keys are the theme names,
     and the values are lists of idea titles that belong to each theme.
 
     Ideas:
@@ -269,22 +287,26 @@ def categorize_ideas(openai_client: OpenAIClient, ideas: List[IdeaItem]) -> dict
     """
 
     logging.info("Categorizing ideas into themes...")
-    categorization_response = openai_client.query(system_message, categorization_prompt)
-    
+    categorization_response = openai_client.query(
+        system_message, categorization_prompt)
+
     try:
         categories = json.loads(clean_json_response(categorization_response))
-        logging.info(f"Categorization result:\n{json.dumps(categories, indent=2, ensure_ascii=False)}")
+        logging.info(f"Categorization result:\n{json.dumps(
+            categories, indent=2, ensure_ascii=False)}")
         return categories
     except json.JSONDecodeError:
-        logging.error("Failed to parse categorization response. Returning an empty dictionary.")
+        logging.error(
+            "Failed to parse categorization response. Returning an empty dictionary.")
         return {}
+
 
 def main():
     openai_client = OpenAIClient()
-    
+
     # Generate and improve ideas
     final_ideas = generate_ideas(openai_client)
-    
+
     # Categorize ideas into themes
     categories = categorize_ideas(openai_client, final_ideas)
 
@@ -293,28 +315,28 @@ def main():
 
     # Append introductory section with GitHub link
     github_message_block = {
-    "object": "block",
-    "type": "paragraph",
-    "paragraph": {
-        "rich_text": [
-            {
-                "type": "text",
-                "text": {"content": "The following section is entirely AI-generated using this tool: "},
-                "annotations": {"italic": True},
-            },
-            {
-                "type": "text",
-                "text": {"content": "AI Idea Generator", "link": {"url": "https://github.com/bjarkividars/AI-Idea-Generator"}},
-                "annotations": {"italic": True},
-            },
-            {
-                "type": "text",
-                "text": {"content": "."},
-                "annotations": {"italic": True},
-            },
-        ]
-    },
-}
+        "object": "block",
+        "type": "paragraph",
+        "paragraph": {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {"content": "The following section is entirely AI-generated using this tool: "},
+                    "annotations": {"italic": True},
+                },
+                {
+                    "type": "text",
+                    "text": {"content": "AI Idea Generator", "link": {"url": "https://github.com/bjarkividars/AI-Idea-Generator"}},
+                    "annotations": {"italic": True},
+                },
+                {
+                    "type": "text",
+                    "text": {"content": "."},
+                    "annotations": {"italic": True},
+                },
+            ]
+        },
+    }
     my_notion_client.append_custom_blocks_to_page(
         [github_message_block]
     )
@@ -325,27 +347,45 @@ def main():
         "type": "heading_3",
         "heading_3": {"rich_text": [{"type": "text", "text": {"content": "Generated Ideas"}}]},
     }
-    my_notion_client.append_custom_blocks_to_page( [ideas_heading])
+    my_notion_client.append_custom_blocks_to_page([ideas_heading])
 
+    # Create a bulleted list for the ideas
     idea_blocks = [
         {
             "object": "block",
-            "type": "paragraph",
-            "paragraph": {
+            "type": "bulleted_list_item",
+            "bulleted_list_item": {
                 "rich_text": [
-                    {"type": "text", "text": {"content": f"{i}. {idea.title}: {idea.description}"}}
+                    {
+                        "type": "text",
+                        "text": {"content": f"{idea.title}: "},
+                        "annotations": {"bold": True},  # Make the title bold
+                    },
+                    {
+                        "type": "text",
+                        # Add the description
+                        "text": {"content": idea.description},
+                    },
                 ]
             },
         }
-        for i, idea in enumerate(final_ideas, start=1)
+        for idea in final_ideas
     ]
-    my_notion_client.append_custom_blocks_to_page( idea_blocks)
+    my_notion_client.append_custom_blocks_to_page(idea_blocks)
 
     # Append affinity diagram
     affinity_heading = {
         "object": "block",
-        "type": "heading_3",
-        "heading_3": {"rich_text": [{"type": "text", "text": {"content": "Affinity Diagram (Themes)"}}]},
+        "type": "paragraph",
+        "paragraph": {
+            "rich_text": [
+                {
+                    "type": "text",
+                    "text": {"content": "Affinity Diagram (Themes)"},
+                    "annotations": {"bold": True},
+                }
+            ]
+        },
     }
     my_notion_client.append_custom_blocks_to_page([affinity_heading])
 
@@ -355,7 +395,7 @@ def main():
             "type": "heading_3",
             "heading_3": {"rich_text": [{"type": "text", "text": {"content": theme}}]},
         }
-        my_notion_client.append_custom_blocks_to_page( [theme_heading])
+        my_notion_client.append_custom_blocks_to_page([theme_heading])
 
         theme_blocks = [
             {
@@ -369,9 +409,10 @@ def main():
             }
             for title in titles
         ]
-        my_notion_client.append_custom_blocks_to_page( theme_blocks)
+        my_notion_client.append_custom_blocks_to_page(theme_blocks)
 
     print("Process completed and uploaded to Notion!")
+
 
 if __name__ == "__main__":
     main()
