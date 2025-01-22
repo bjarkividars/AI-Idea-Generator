@@ -135,25 +135,25 @@ def clean_json_response(response: str) -> str:
 
 def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
     """
-    Generates 11 ideas, evaluates them, improves the weak ones, 
+    Generates 24 ideas, evaluates them, improves the weak ones, 
     and repeats until all are 'Good enough' or 5 attempts have passed.
 
     Returns:
-        list[IdeaItem]: The final list of 11 ideas (each with title, description, rating).
+        list[IdeaItem]: The final list of 24 ideas (each with title, description, rating).
     """
     system_message = "You are a helpful assistant that excels in generating ideas and brainstorming."
     question = "How might we use digital tools to help people build trust and express emotions in romantic relationships?"
 
-    # Prompt to generate 11 ideas
+    # Prompt to generate 24 ideas
     generation_prompt = f"""
-    Generate 11 creative ideas in a JSON array to address the following question:
+    Generate 24 creative ideas in a JSON array to address the following question:
     "{question}"
 
     Each idea must be an object with:
     - "title": Short descriptive title
     - "description": A one or two sentence explanation of the idea
 
-    Return exactly 11 objects in a valid JSON list, for example:
+    Return exactly 24 objects in a valid JSON list, for example:
     [
       {{
         "title": "Idea Title 1",
@@ -176,7 +176,7 @@ def generate_ideas(openai_client: OpenAIClient) -> List[IdeaItem]:
 
         # 1) Generate initial ideas if no ideas exist
         if not good_enough_ideas and not needs_improvement_ideas:
-            logging.info("Generating 11 initial ideas...")
+            logging.info("Generating 24 initial ideas...")
             raw_generation_response = openai_client.query(system_message, generation_prompt)
             try:
                 json_list = json.loads(clean_json_response(raw_generation_response))
