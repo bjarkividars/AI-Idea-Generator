@@ -1,6 +1,7 @@
 import logging
 import json
 from typing import List, Optional
+from my_notion_client import NotionClientWrapper
 from my_openai import OpenAIClient
 
 # Configure logging
@@ -284,23 +285,93 @@ def main():
     # Generate and improve ideas
     final_ideas = generate_ideas(openai_client)
     
-    # Print final ideas
-    print("Final Ideas:")
-    for i, idea in enumerate(final_ideas, start=1):
-        print(f"{i}. Title: {idea.title}")
-        print(f"   Description: {idea.description}")
-        print(f"   Rating: {idea.rating}")
-        print("")
-
     # Categorize ideas into themes
     categories = categorize_ideas(openai_client, final_ideas)
-    
-    # Print categorized themes
-    print("\nAffinity Diagram (Themes):")
+
+    # Notion setup
+    my_notion_client = NotionClientWrapper()
+
+    # Append introductory section with GitHub link
+    github_message_block = {
+    "object": "block",
+    "type": "paragraph",
+    "paragraph": {
+        "rich_text": [
+            {
+                "type": "text",
+                "text": {"content": "The following section is entirely AI-generated using this tool: "},
+                "annotations": {"italic": True},
+            },
+            {
+                "type": "text",
+                "text": {"content": "AI Idea Generator", "link": {"url": "https://github.com/bjarkividars/AI-Idea-Generator"}},
+                "annotations": {"italic": True},
+            },
+            {
+                "type": "text",
+                "text": {"content": "."},
+                "annotations": {"italic": True},
+            },
+        ]
+    },
+}
+    my_notion_client.append_custom_blocks_to_page(
+        [github_message_block]
+    )
+
+    # Append final ideas
+    ideas_heading = {
+        "object": "block",
+        "type": "heading_2",
+        "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Generated Ideas"}}]},
+    }
+    my_notion_client.append_custom_blocks_to_page( [ideas_heading])
+
+    idea_blocks = [
+        {
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {
+                "rich_text": [
+                    {"type": "text", "text": {"content": f"{i}. {idea.title}: {idea.description}"}}
+                ]
+            },
+        }
+        for i, idea in enumerate(final_ideas, start=1)
+    ]
+    my_notion_client.append_custom_blocks_to_page( idea_blocks)
+
+    # Append affinity diagram
+    affinity_heading = {
+        "object": "block",
+        "type": "heading_2",
+        "heading_2": {"rich_text": [{"type": "text", "text": {"content": "Affinity Diagram (Themes)"}}]},
+    }
+    my_notion_client.append_custom_blocks_to_page([affinity_heading])
+
     for theme, titles in categories.items():
-        print(f"\nTheme: {theme}")
-        for title in titles:
-            print(f"- {title}")
+        theme_heading = {
+            "object": "block",
+            "type": "heading_3",
+            "heading_3": {"rich_text": [{"type": "text", "text": {"content": theme}}]},
+        }
+        my_notion_client.append_custom_blocks_to_page( [theme_heading])
+
+        theme_blocks = [
+            {
+                "object": "block",
+                "type": "bulleted_list_item",
+                "bulleted_list_item": {
+                    "rich_text": [
+                        {"type": "text", "text": {"content": title}}
+                    ]
+                },
+            }
+            for title in titles
+        ]
+        my_notion_client.append_custom_blocks_to_page( theme_blocks)
+
+    print("Process completed and uploaded to Notion!")
 
 if __name__ == "__main__":
     main()
